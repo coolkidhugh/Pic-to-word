@@ -1,102 +1,132 @@
 import streamlit as st
+from PIL import Image
+import pytesseract
+import pandas as pd
+import io
 
 #
 # >>>>>>>>>>>>>>>>>>>>>>>>>
-#      APP页面设置！必须得帅！
+#      APP 页面设置！必须炸裂！
 # <<<<<<<<<<<<<<<<<<<<<<<<<
 #
-# 必须得是宽屏模式！越大越好！燥起来！
 st.set_page_config(
-    page_title="史上最强酒店话术生成器!",
-    page_icon="🔥",
+    page_title="图片转话术 - 超级升级版!",
+    page_icon="📸",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 #
 # >>>>>>>>>>>>>>>>>>>>>>>>>
-#      APP的灵魂！界面！UI！
+#      APP 的无敌界面！
 # <<<<<<<<<<<<<<<<<<<<<<<<<
 #
-st.title("🔥 酒店话术生成器！汪汪！汪！🔥")
-st.header("为最快的兄弟打造！冠军专属！SEWEYYY! C罗！")
+st.title("📸 图片转酒店话术 - IShowSpeed看了都说YES! 🔥")
+st.header("上传你的截图，AI 帮你生成话术！太酷啦！😎")
 
-st.sidebar.header("⚠️ 集中精神！把这里填满！⚠️")
+st.sidebar.header("⚙️ 上传你的截图！")
+uploaded_file = st.sidebar.file_uploader("选择你的截图文件 (支持 JPG, PNG 等)", type=["jpg", "jpeg", "png"])
 
-# --- 所有选项都在侧边栏！ ---
-with st.sidebar:
-    st.subheader("1. 团队信息 (他们是谁?!)")
-    group_type = st.selectbox("选团队类型，兄弟们！", ["会议团 (CON)", "散客团 (FIT)", "旅游团"], key="group_type")
-    group_name = st.text_input("团队名字叫啥？ (比如: CON25312/...)")
+st.sidebar.subheader("✨ 话术选项")
+default_group_type = st.selectbox("默认团队类型 (如果图片里没有)", ["会议团 (CON)", "散客团 (FIT)", "旅游团"], index=0)
 
-    st.subheader("2. 日期！他们啥时候来？！")
-    col1, col2 = st.columns(2)
-    with col1:
-        check_in = st.text_input("入住 MMDD (比如: 0910)")
-    with col2:
-        check_out = st.text_input("退房 MMDD (比如: 0913)")
-
-    st.subheader("3. 房间！房间信息给我！")
-    
-    # 用 session_state 记住房间信息！跟魔法一样！
-    if 'rooms' not in st.session_state:
-        st.session_state.rooms = [{"count": 15, "type": "SQS", "price": 550}]
-
-    def add_room():
-        # 加个新房间！走你！
-        st.session_state.rooms.append({"count": "", "type": "", "price": ""})
-
-    def remove_room(index):
-        # 把这个房间给我删了！滚蛋！
-        st.session_state.rooms.pop(index)
-
-    # 把所有房间都显示出来！
-    for i, room in enumerate(st.session_state.rooms):
-        row = st.columns((2, 3, 2, 1))
-        st.session_state.rooms[i]['count'] = row[0].number_input("房数", key=f"count_{i}", value=room['count'], min_value=1, step=1)
-        st.session_state.rooms[i]['type'] = row[1].text_input("房型", key=f"type_{i}", value=room['type']).upper()
-        st.session_state.rooms[i]['price'] = row[2].number_input("房价", key=f"price_{i}", value=room['price'], min_value=0)
-        row[3].button("X", key=f"del_{i}", on_click=remove_room, args=(i,), help="删掉这个！搞快点！")
-
-    st.button("➕ 再加一个房型！冲！", on_click=add_room)
-
+st.sidebar.info("提示: 截图越清晰，识别效果越好哦！")
 
 #
 # >>>>>>>>>>>>>>>>>>>>>>>>>
-#      核心逻辑！最强大脑！
+#      核心逻辑！读取图片，识别文字！
 # <<<<<<<<<<<<<<<<<<<<<<<<<
 #
 st.divider()
-st.subheader("💥 你的无敌话术已经准备好了！ 💥")
+st.subheader("🚀 生成的话术在这里！")
 
-# --- 生成最终话术 ---
-if st.button("立刻生成！ (点我！)", type="primary", use_container_width=True):
-    is_ready = True
-    # 检查是不是都填了！别偷懒！
-    if not group_name:
-        st.error("哎哟！团队名字忘了！醒醒！")
-        is_ready = False
-    if not check_in or not check_out:
-        st.error("我的天！日期呢！没日期怎么搞！")
-        is_ready = False
-    if not st.session_state.rooms:
-        st.error("一个房间都没有？！让他们睡大马路吗？！快加！")
-        is_ready = False
-    
-    # 要是都填好了，那就起飞！
-    if is_ready:
-        group_type_clean = group_type.split(" ")[0] # 只要中文部分
-        date_range = f"{check_in}-{check_out}"
-        
-        room_parts = []
-        for room in st.session_state.rooms:
-            if room['count'] and room['type'] and room['price']:
-                room_parts.append(f"{int(room['count'])}{room['type']}{int(room['price'])}")
-        
-        room_string = " ".join(room_parts)
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
+    st.image(image, caption="你上传的图片", use_column_width=True)
 
-        final_script = f"新增{group_type_clean} {group_name} {date_range} {room_string} 销售"
+    st.info("正在识别图片中的文字... 请稍候！")
+    try:
+        # 使用 pytesseract 识别图片中的文字
+        extracted_text = pytesseract.image_to_string(image, lang='chi_sim') # 尝试识别中文
+        if not extracted_text.strip():
+            extracted_text = pytesseract.image_to_string(image) # 如果中文识别失败，尝试识别英文等
 
-        st.code(final_script, language="text")
-        st.balloons()
-        st.success("复制就完事了！兄弟们我们成功了！W！")
+        st.subheader("识别到的文字:")
+        st.code(extracted_text)
+
+        # --- 尝试从识别到的文字中提取信息 ---
+        lines = extracted_text.strip().split('\n')
+        group_name_from_image = ""
+        check_in_from_image = ""
+        check_out_from_image = ""
+        room_data_from_image = []
+
+        # 这里需要根据你的截图格式进行更智能的解析
+        # 这只是一个非常基础的示例，你需要根据你的截图格式进行调整！
+        first_line = lines and lines[-1] # 假设最后一行可能包含关键信息
+
+        if lines:
+            for line in lines:
+                if "CON" in line or "FIT" in line:
+                    parts = line.split()
+                    for part in parts:
+                        if "CON" in part or "FIT" in part:
+                            group_name_from_image = part
+                            break
+                    break
+            
+            # 尝试查找日期，这部分可能需要更精确的匹配
+            import re
+            date_pattern = re.compile(r'(\d{2}/\d{2})')
+            dates = date_pattern.findall(extracted_text)
+            if len(dates) >= 2:
+                check_in_guess = dates[-2].replace('/', '')
+                check_out_guess = dates[-1].replace('/', '')
+                if len(check_in_guess) == 4 and len(check_out_guess) == 4:
+                    check_in_from_image = check_in_guess
+                    check_out_from_image = check_out_guess
+
+            # 尝试查找房间信息，这部分非常依赖截图格式
+            for line in lines:
+                if "SQS" in line or "SQN" in line or "SKN" in line or "STN" in line or "ETN" in line or "JKN" in line:
+                    parts = line.split()
+                    room_info = {}
+                    for i, part in enumerate(parts):
+                        if part.isdigit():
+                            room_info['count'] = part
+                        elif part.isalpha() and len(part) >= 3:
+                            room_info['type'] = part.upper()
+                        elif i + 1 < len(parts) and parts [i+1].replace('.', '', 1).isdigit(): # 尝试找价格
+                            room_info['price'] = parts [i+1]
+                    if 'count' in room_info and 'type' in room_info and 'price' in room_info:
+                        room_data_from_image.append(f"{room_info['count']}{room_info['type']}{room_info['price']}")
+
+
+        # --- 生成最终话术 ---
+        final_group_name = group_name_from_image if group_name_from_image else "未知团队"
+        final_check_in = check_in_from_image if check_in_from_image else "XXXX"
+        final_check_out = check_out_from_image if check_out_from_image else "XXXX"
+        final_room_string = " ".join(room_data_from_image) if room_data_from_image else "没有识别到房间信息"
+        final_group_type = default_group_type.split(" ")[0] if "未知团队" in final_group_name else default_group_type.split(" ")[0]
+
+        if "没有识别到房间信息" not in final_room_string and final_check_in != "XXXX" and final_check_out != "XXXX" and "未知团队" not in final_group_name:
+            final_script = f"新增{final_group_type} {final_group_name} {final_check_in}-{final_check_out} {final_room_string} 销售"
+            st.subheader("✨ 自动生成的话术:")
+            st.code(final_script, language="text")
+            st.balloons()
+        else:
+            st.warning("⚠️ 无法完全自动生成话术。请检查识别到的文字，可能需要手动调整。")
+            if final_check_in != "XXXX" and final_check_out != "XXXX":
+                st.info(f"猜测日期: {final_check_in}-{final_check_out}")
+            if final_group_name != "未知团队":
+                st.info(f"猜测团队名称: {final_group_name}")
+            if final_room_string != "没有识别到房间信息":
+                st.info(f"猜测房间信息: {final_room_string}")
+
+
+    except pytesseract.TesseractNotFoundError:
+        st.error("😭 Tesseract OCR 未找到！请确保你已经安装了 Tesseract，并且添加到系统 PATH 环境变量中。")
+    except Exception as e:
+        st.error(f"识别图片时发生错误: {e}")
+else:
+    st.info("👆 请在侧边栏上传你的酒店订单截图！")
