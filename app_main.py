@@ -9,7 +9,7 @@ import re
 # <<<<<<<<<<<<<<<<<<<<<<<<<
 #
 st.set_page_config(
-    page_title="图片转话术 - 史诗升级版!",
+    page_title="图片转话术 - 史诗究极版!",
     page_icon="🧠",
     layout="wide"
 )
@@ -19,7 +19,7 @@ st.set_page_config(
 #      APP 的无敌界面！
 # <<<<<<<<<<<<<<<<<<<<<<<<<
 #
-st.title("🧠 图片转酒店话术 - AI大脑升级版! 🔥")
+st.title("🧠 图片转酒店话术 - AI大脑究极版! 🚀")
 st.header("上传截图，让更聪明的AI帮你生成话术！")
 
 uploaded_file = st.sidebar.file_uploader(
@@ -81,12 +81,17 @@ def parse_ocr_text(text):
                 price = numbers[-1]
                 # 简单的验证，防止把日期里的数字当成价格
                 if int(price) > 100: 
-                    rooms.append(f"{count}{room_type}{price}")
+                    # ---【核心修改 #1】---
+                    # 在房价周围加上括号，例如: 15SQS(550)
+                    rooms.append(f"{count}{room_type}({price})")
 
+    # ---【核心修改 #2】---
+    # 判断团队类型，如果团队名包含 "FIT"，则自动设为 "散客团"
     final_group_type = "会议团" # 默认值
-    if "FIT" in group_name:
+    if "FIT" in group_name.upper(): # 使用 .upper() 增加鲁棒性，大小写都能识别
         final_group_type = "散客团"
 
+    # 返回最终话术和成功状态
     return f"新增{final_group_type} {group_name} {check_in}-{check_out} {' '.join(rooms)} 销售", len(rooms) > 0
 
 
@@ -107,6 +112,7 @@ if uploaded_file:
             st.subheader("✨ AI为你生成的话术:")
             if success:
                 st.code(final_script, language="text")
+                st.success("话术生成成功！请复制使用。")
                 st.balloons()
             else:
                 st.warning("⚠️ AI尽力了，但信息可能不完整。请检查原始文字，手动修改下面的话术。")
